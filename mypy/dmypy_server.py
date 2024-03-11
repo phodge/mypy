@@ -316,6 +316,7 @@ class Server:
         export_types: bool,
         is_tty: bool,
         terminal_width: int,
+        is_fresh: bool,
     ) -> dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         stderr = io.StringIO()
@@ -333,6 +334,12 @@ class Server:
                         program="mypy-daemon",
                         header=argparse.SUPPRESS,
                     )
+
+            # show any debug output from inside option processing
+            if stderr.getvalue():
+                print(stderr.getvalue())
+            if stdout.getvalue():
+                print(stdout.getvalue())
             # Signal that we need to restart if the options have changed
             if not options.compare_stable(self.options_snapshot):
                 return {"restart": "configuration changed"}
@@ -350,6 +357,12 @@ class Server:
             return {"out": "", "err": str(err), "status": 2}
         except SystemExit as e:
             return {"out": stdout.getvalue(), "err": stderr.getvalue(), "status": e.code}
+
+        # smash the new shadow_file setting onto our local options and see what
+        # happens
+        # TODO: might also need to push it into self.options
+        self.options_snapshot['shadow_file'] = options.shadow_file
+
         return self.check(sources, export_types, is_tty, terminal_width)
 
     def cmd_check(
@@ -420,6 +433,8 @@ class Server:
         """
         old_export_types = self.options.export_types
         self.options.export_types = self.options.export_types or export_types
+        import pprint
+        print('self.fine_grained_manager = ' + pprint.pformat(self.fine_grained_manager))  # noqa TODO
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
         else:
@@ -473,6 +488,8 @@ class Server:
 
         original_sources_len = len(sources)
         if self.following_imports():
+            # XXX: this is going to add a lot of sources to the list - how does
+            # that work?
             sources = find_all_sources_in_build(self.fine_grained_manager.graph, sources)
             self.update_sources(sources)
 
@@ -490,6 +507,7 @@ class Server:
                 if meta is None:
                     continue
                 assert state.path is not None
+                # TODO: should we be using the shadow file content here?
                 self.fswatcher.set_file_data(
                     state.path,
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, hash=meta.hash),

@@ -392,7 +392,12 @@ def do_run(args: argparse.Namespace) -> None:
     """
     if not is_running(args.status_file):
         # Bad or missing status file or dead process; good to start.
+        # TODO: we need to *not* pass --shadow-file args here or they will get
+        # pushed into the server and they'll be there forever :-(
         start_server(args, allow_sources=True)
+        is_fresh = True
+    else:
+        is_fresh = False
     t0 = time.time()
     response = request(
         args.status_file,
@@ -400,6 +405,7 @@ def do_run(args: argparse.Namespace) -> None:
         version=__version__,
         args=args.flags,
         export_types=args.export_types,
+        is_fresh=is_fresh,
     )
     # If the daemon signals that a restart is necessary, do it
     if "restart" in response:
@@ -411,6 +417,7 @@ def do_run(args: argparse.Namespace) -> None:
             version=__version__,
             args=args.flags,
             export_types=args.export_types,
+            is_fresh=True,
         )
 
     t1 = time.time()

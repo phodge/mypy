@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import functools
 import os
+from pathlib import Path
 from typing import Final, Sequence
 
 from mypy.fscache import FileSystemCache
-from mypy.modulefinder import PYTHON_EXTENSIONS, BuildSource, matches_exclude, mypy_path
+from mypy.modulefinder import (PYTHON_EXTENSIONS, BuildSource, matches_exclude,
+                               mypy_path)
 from mypy.options import Options
 
 PY_EXTENSIONS: Final = tuple(PYTHON_EXTENSIONS)
@@ -22,6 +24,9 @@ def create_source_list(
     options: Options,
     fscache: FileSystemCache | None = None,
     allow_empty_dir: bool = False,
+    *,
+    mutilate_shadow_file: bool = False,
+    noisy: bool = False,
 ) -> list[BuildSource]:
     """From a list of source files/directories, makes a list of BuildSources.
 
@@ -30,21 +35,63 @@ def create_source_list(
     fscache = fscache or FileSystemCache()
     finder = SourceFinder(fscache, options)
 
+    if noisy:
+        import pprint
+        print('options.shadow_file = ' + pprint.pformat(options.shadow_file))  # noqa TODO
+
+    shadow_file_dict = {
+        pair[0]: pair[1]
+        for pair in (options.shadow_file or [])
+    }
+
+    if noisy:
+        print('shadow_file_dict = {')  # TODO
+        for _ in shadow_file_dict.items():
+            print('  '+repr(_[0])+': '+repr(_[1])+',')
+        print('}')
+
     sources = []
     for path in paths:
+        if noisy:
+            import pprint
+            print('path = ' + pprint.pformat(path))  # noqa TODO
         path = os.path.normpath(path)
         if path.endswith(PY_EXTENSIONS):
             # Can raise InvalidSourceList if a directory doesn't have a valid module name.
             name, base_dir = finder.crawl_up(path)
-            sources.append(BuildSource(path, name, None, base_dir))
+            try:
+                shadow_content = Path(shadow_file_dict.pop(path)).read_text()
+                #print(f"FORCED CONTENT for {path}")
+            except KeyError:
+                #print(f"NO FORCED CONTENT for {path}")
+                shadow_content = None
+            if noisy:
+                import pprint
+                print('shadow_content = ' + pprint.pformat(shadow_content))  # noqa TODO
+            sources.append(BuildSource(path, name, shadow_content, base_dir))
         elif fscache.isdir(path):
             sub_sources = finder.find_sources_in_dir(path)
             if not sub_sources and not allow_empty_dir:
                 raise InvalidSourceList(f"There are no .py[i] files in directory '{path}'")
             sources.extend(sub_sources)
         else:
+            #print(f"FORCED CONTENT for {path}???")
             mod = os.path.basename(path) if options.scripts_are_modules else None
             sources.append(BuildSource(path, mod, None))
+
+    if mutilate_shadow_file:
+        options.shadow_file = [[path, shadow_path] for path, shadow_path in shadow_file_dict.items()]
+
+    if noisy:
+        print('options.shadow_file = [')  # TODO
+        for _ in options.shadow_file:
+            print('  '+repr(_)+',')
+        print(']')
+        print('sources = [')  # TODO
+        for _ in sources:
+            print('  '+repr(_)+',')
+        print(']')
+
     return sources
 
 

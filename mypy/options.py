@@ -326,6 +326,9 @@ class Options:
         self.test_env = False
 
         # -- experimental options --
+        # NOTE: Some shadow files might not be included here if those files are
+        # also BuildSource targets. In those cases the shadow file contents are
+        # loaded directly into the BuildSource objects.
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
@@ -412,7 +415,7 @@ class Options:
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
 
-    def apply_changes(self, changes: dict[str, object]) -> Options:
+    def apply_changes(self, changes: dict[str, object], include_shadow_files: bool = True) -> Options:
         # Note: effects of this method *must* be idempotent.
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
@@ -437,6 +440,12 @@ class Options:
             new_options.enabled_error_codes.add(code)
             new_options.disabled_error_codes.discard(code)
 
+        # XXX: this will prevent the server from restarting; but we still need
+        # to re-run with the new value of .shadow_file
+        if not include_shadow_files:
+            # TODO: is it better to use select_options_affecting_cache()
+            new_options.shadow_file = None
+
         return new_options
 
     def compare_stable(self, other_snapshot: dict[str, object]) -> bool:
@@ -446,8 +455,8 @@ class Options:
         Options().apply_changes(options.snapshot()) may result in a (slightly) different object.
         """
         return (
-            Options().apply_changes(self.snapshot()).snapshot()
-            == Options().apply_changes(other_snapshot).snapshot()
+            Options().apply_changes(self.snapshot(), include_shadow_files=False).snapshot()
+            == Options().apply_changes(other_snapshot, include_shadow_files=False).snapshot()
         )
 
     def build_per_module_cache(self) -> None:

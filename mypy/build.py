@@ -682,7 +682,11 @@ class BuildManager:
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
         self.shadow_map: dict[str, str] = {}
-        if self.options.shadow_file is not None:
+        print("MAKING A NEW BUILD ENGINE")
+        if self.options.shadow_file:
+            if os.getenv('ENGINE') == 'dmypy':
+                print("TIME TO MAKE A NEW SHADOW MAP!")
+
             self.shadow_map = dict(self.options.shadow_file)
         # a mapping from each file being typechecked to its possible shadow file
         self.shadow_equivalence_map: dict[str, str | None] = {}

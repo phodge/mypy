@@ -1424,8 +1424,17 @@ def process_options(
         targets = [BuildSource(None, None, "\n".join(special_opts.command))]
         return targets, options
     else:
+        run2 = False
+        if options.shadow_file and 'badbool' in options.shadow_file[0][1]:
+            run2 = True
         try:
-            targets = create_source_list(special_opts.files, options, fscache)
+            targets = create_source_list(
+                special_opts.files,
+                options,
+                fscache,
+                mutilate_shadow_file=True,
+                noisy=run2 and os.getenv('ENGINE') == 'dmypy',
+            )
         # Variable named e2 instead of e to work around mypyc bug #620
         # which causes issues when using the same variable to catch
         # exceptions of different types.
