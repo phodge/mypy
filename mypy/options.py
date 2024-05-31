@@ -443,6 +443,12 @@ class Options:
             new_options.enabled_error_codes.add(code)
             new_options.disabled_error_codes.discard(code)
 
+        # XXX: this will prevent the server from restarting; but we still need
+        # to re-run with the new value of .shadow_file
+        if not include_shadow_files:
+            # TODO: is it better to use select_options_affecting_cache()
+            new_options.shadow_file = None
+
         return new_options
 
     def compare_stable(self, other_snapshot: dict[str, object]) -> bool:
