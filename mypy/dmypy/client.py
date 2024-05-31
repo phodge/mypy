@@ -392,6 +392,8 @@ def do_run(args: argparse.Namespace) -> None:
     """
     if not is_running(args.status_file):
         # Bad or missing status file or dead process; good to start.
+        # TODO: we need to *not* pass --shadow-file args here or they will get
+        # pushed into the server and they'll be there forever :-(
         start_server(args, allow_sources=True)
         is_fresh = True
     else:
