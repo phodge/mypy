@@ -436,6 +436,8 @@ class Server:
         """
         old_export_types = self.options.export_types
         self.options.export_types = self.options.export_types or export_types
+        import pprint
+        print('self.fine_grained_manager = ' + pprint.pformat(self.fine_grained_manager))  # noqa TODO
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
         else:
@@ -508,6 +510,7 @@ class Server:
                 if meta is None:
                     continue
                 assert state.path is not None
+                # TODO: should we be using the shadow file content here?
                 self.fswatcher.set_file_data(
                     state.path,
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, hash=meta.hash),
