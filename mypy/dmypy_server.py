@@ -334,6 +334,12 @@ class Server:
                         program="mypy-daemon",
                         header=argparse.SUPPRESS,
                     )
+
+            # show any debug output from inside option processing
+            if stderr.getvalue():
+                print(stderr.getvalue())
+            if stdout.getvalue():
+                print(stdout.getvalue())
             # Signal that we need to restart if the options have changed
             if not options.compare_stable(self.options_snapshot):
                 return {"restart": "configuration changed"}
