@@ -316,6 +316,7 @@ class Server:
         export_types: bool,
         is_tty: bool,
         terminal_width: int,
+        is_fresh: bool,
     ) -> dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         stderr = io.StringIO()
