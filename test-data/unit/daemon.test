@@ -189,6 +189,24 @@ fail
 [file foo/ok.py]
 a: int = 1
 
+[case testDaemonNoRestartForDifferentDisplayOptions]
+-- Ensure dmypy is not restarted if display-related option change
+$ dmypy run -- foo --show-column-numbers --show-error-codes
+Daemon started
+foo/lol.py:1:1: error: Name "fail" is not defined  [name-defined]
+Found 1 error in 1 file (checked 3 source files)
+== Return code: 1
+$ dmypy run -- foo --hide-column-numbers --hide-error-codes
+foo/lol.py:1: error: Name "fail" is not defined
+Found 1 error in 1 file (checked 3 source files)
+== Return code: 1
+
+[file foo/__init__.py]
+[file foo/lol.py]
+fail
+[file foo/ok.py]
+a: int = 1
+
 [case testDaemonStatusKillRestartRecheck]
 $ dmypy status
 No status file found
