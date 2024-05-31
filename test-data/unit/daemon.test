@@ -191,6 +191,15 @@ a: int = 1
 
 [case testDaemonNoRestartForDifferentDisplayOptions]
 -- Ensure dmypy is not restarted if display-related option change
+-- TODO: create another version of this test where the display-related options
+-- are "changed" by providing values that differ from mypy.ini.
+-- TODO: create another version of this test where the display-related options
+-- are "changed" by providing values that differ from mypy's defaults
+-- TODO: two more versions of this test where the display-related options
+-- are "changed" by starting the daemon with specific values then invoking the
+-- daemon again with *no arguments* such that the 2nd invocation needs to run with
+--   A) the display-related option values from mypy.ini
+--   B) the display-related option values that are default for mypy
 $ dmypy run -- foo --show-column-numbers --show-error-codes
 Daemon started
 foo/lol.py:1:1: error: Name "fail" is not defined  [name-defined]
