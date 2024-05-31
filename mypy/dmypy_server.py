@@ -357,6 +357,12 @@ class Server:
             return {"out": "", "err": str(err), "status": 2}
         except SystemExit as e:
             return {"out": stdout.getvalue(), "err": stderr.getvalue(), "status": e.code}
+
+        # smash the new shadow_file setting onto our local options and see what
+        # happens
+        # TODO: might also need to push it into self.options
+        self.options_snapshot['shadow_file'] = options.shadow_file
+
         return self.check(sources, export_types, is_tty, terminal_width)
 
     def cmd_check(
