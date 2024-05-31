@@ -489,6 +489,8 @@ class Server:
 
         original_sources_len = len(sources)
         if self.following_imports():
+            # XXX: this is going to add a lot of sources to the list - how does
+            # that work?
             sources = find_all_sources_in_build(self.fine_grained_manager.graph, sources)
             self.update_sources(sources)
 
