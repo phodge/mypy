@@ -418,7 +418,7 @@ class Options:
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
 
-    def apply_changes(self, changes: dict[str, object]) -> Options:
+    def apply_changes(self, changes: dict[str, object], include_shadow_files: bool = True) -> Options:
         # Note: effects of this method *must* be idempotent.
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
