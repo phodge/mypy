@@ -452,8 +452,8 @@ class Options:
         Options().apply_changes(options.snapshot()) may result in a (slightly) different object.
         """
         return (
-            Options().apply_changes(self.snapshot()).snapshot()
-            == Options().apply_changes(other_snapshot).snapshot()
+            Options().apply_changes(self.snapshot(), include_shadow_files=False).snapshot()
+            == Options().apply_changes(other_snapshot, include_shadow_files=False).snapshot()
         )
 
     def build_per_module_cache(self) -> None:
