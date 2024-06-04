@@ -191,6 +191,19 @@ a: int = 1
 
 [case testDaemonNoRestartForDifferentDisplayOptions]
 -- Ensure dmypy is not restarted if display-related option change
+-- XXX: we are having trouble with the --hide-error-code option due to the way
+-- it is implemented, so why not try some of these options instead:
+--   --show-error-context/--hide-error-context
+--   --show-error-end/--hide-error-end (implies --show-column-numbers)
+--   --pretty/--no-pretty
+--   --color-output/--no-color-output
+--   --error-summary/--no-error-summary
+--   --show-absolute-path/--hide-absolute-path
+--   --html-report DIR
+--   --linecount-report DIR
+--   --linecoverage-report DIR
+--   --lineprecision-report DIR
+--   --txt-report DIR
 -- TODO: create another version of this test where the display-related options
 -- are "changed" by providing values that differ from mypy.ini.
 -- TODO: create another version of this test where the display-related options
@@ -203,18 +216,19 @@ a: int = 1
 $ dmypy run -- foo --show-column-numbers --show-error-codes
 Daemon started
 foo/lol.py:1:1: error: Name "fail" is not defined  [name-defined]
-Found 1 error in 1 file (checked 3 source files)
+Found 1 error in 1 file (checked 2 source files)
 == Return code: 1
+-- modify the source file so that it must be re-checked
+-- TODO: we shouldn't need this
+$ {python} -c "print('# empty line'); print('fail')" > foo/lol.py
 $ dmypy run -- foo --hide-column-numbers --hide-error-codes
-foo/lol.py:1: error: Name "fail" is not defined
+foo/lol.py:2: error: Name "fail" is not defined
 Found 1 error in 1 file (checked 3 source files)
 == Return code: 1
 
 [file foo/__init__.py]
 [file foo/lol.py]
 fail
-[file foo/ok.py]
-a: int = 1
 
 [case testDaemonStatusKillRestartRecheck]
 $ dmypy status

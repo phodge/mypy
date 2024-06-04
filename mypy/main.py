@@ -216,6 +216,7 @@ def run_build(
 def show_messages(
     messages: list[str], f: TextIO, formatter: util.FancyFormatter, options: Options
 ) -> None:
+    # XXX: this is where we should be formatting error messages, yes? No?
     for msg in messages:
         if options.color_output:
             msg = formatter.colorize(msg)
