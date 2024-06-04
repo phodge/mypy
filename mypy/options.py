@@ -79,7 +79,11 @@ COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
 
 
 class Options:
-    """Options collected from flags."""
+    """Options collected from flags.
+
+    Note that display-related options have been moved to the DisplayOptions so
+    that they don't invalidate caches or cause unnecessary daemon restarts.
+    """
 
     def __init__(self) -> None:
         # Cache for clone_for_module()
@@ -328,8 +332,10 @@ class Options:
 
         # -- experimental options --
         self.shadow_file: list[list[str]] | None = None
+        # TODO: get rid of this in favour of want_column_numbers
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
+        # TODO: get rid of this in favour of want_error_codes
         self.hide_error_codes = False
         self.show_error_code_links = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
@@ -408,6 +414,11 @@ class Options:
         for k in get_class_descriptors(Options):
             if hasattr(self, k) and k != "new_semantic_analyzer":
                 d[k] = getattr(self, k)
+
+        # XXX: remove display-related options from snapshot
+        d.pop("show_column_numbers", None)
+        d.pop("hide_error_codes", None)
+
         # Remove private attributes from snapshot
         d = {k: v for k, v in d.items() if not k.startswith("_")}
         return d
@@ -557,3 +568,9 @@ class Options:
                 val = sorted([code.code for code in val])
             result[opt] = val
         return result
+
+
+class DisplayOptions:
+    def __init__(self, *, want_column_numbers: bool, want_error_codes: bool) -> None:
+        self.want_column_numbers: bool = want_column_numbers
+        self.want_error_codes: bool = want_error_codes

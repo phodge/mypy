@@ -350,8 +350,14 @@ def start_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import daemonize, process_start_options
 
-    start_options = process_start_options(args.flags, allow_sources)
-    if daemonize(start_options, args.status_file, timeout=args.timeout, log_file=args.log_file):
+    start_options, display_options = process_start_options(args.flags, allow_sources)
+    if daemonize(
+        start_options,
+        display_options,
+        args.status_file,
+        timeout=args.timeout,
+        log_file=args.log_file,
+    ):
         sys.exit(2)
     wait_for_server(args.status_file)
 
@@ -620,13 +626,14 @@ def do_daemon(args: argparse.Namespace) -> None:
     if args.options_data:
         from mypy.options import Options
 
+        # XXX: what is this? Can we use this to pull in new option values?
         options_dict = pickle.loads(base64.b64decode(args.options_data))
         options_obj = Options()
         options = options_obj.apply_changes(options_dict)
     else:
-        options = process_start_options(args.flags, allow_sources=False)
+        options, display_options = process_start_options(args.flags, allow_sources=False)
 
-    Server(options, args.status_file, timeout=args.timeout).serve()
+    Server(options, display_options, args.status_file, timeout=args.timeout).serve()
 
 
 @action(help_parser)

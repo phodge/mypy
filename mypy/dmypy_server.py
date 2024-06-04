@@ -30,7 +30,7 @@ from mypy.fswatcher import FileData, FileSystemWatcher
 from mypy.inspections import InspectionEngine
 from mypy.ipc import IPCServer
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, compute_search_paths
-from mypy.options import Options
+from mypy.options import DisplayOptions, Options
 from mypy.server.update import FineGrainedBuildManager, refresh_suppressed_submodules
 from mypy.suggestions import SuggestionEngine, SuggestionFailure
 from mypy.typestate import reset_global_state
@@ -43,7 +43,12 @@ if sys.platform == "win32":
     from subprocess import STARTUPINFO
 
     def daemonize(
-        options: Options, status_file: str, timeout: int | None = None, log_file: str | None = None
+        options: Options,
+        display_options: DisplayOptions,
+        status_file: str,
+        *,
+        timeout: int | None = None,
+        log_file: str | None = None,
     ) -> int:
         """Create the daemon process via "dmypy daemon" and pass options via command line
 
@@ -57,6 +62,7 @@ if sys.platform == "win32":
         """
         command = [sys.executable, "-m", "mypy.dmypy", "--status-file", status_file, "daemon"]
         pickled_options = pickle.dumps(options.snapshot())
+        # TODO: do we need to add a --display-options-data here?
         command.append(f'--options-data="{base64.b64encode(pickled_options).decode()}"')
         if timeout:
             command.append(f"--timeout={timeout}")
@@ -119,7 +125,12 @@ else:
             os._exit(1)
 
     def daemonize(
-        options: Options, status_file: str, timeout: int | None = None, log_file: str | None = None
+        options: Options,
+        display_options: DisplayOptions,
+        status_file: str,
+        *,
+        timeout: int | None = None,
+        log_file: str | None = None,
     ) -> int:
         """Run the mypy daemon in a grandchild of the current process
 
@@ -134,8 +145,8 @@ else:
 CONNECTION_NAME: Final = "dmypy"
 
 
-def process_start_options(flags: list[str], allow_sources: bool) -> Options:
-    _, options = mypy.main.process_options(
+def process_start_options(flags: list[str], allow_sources: bool) -> tuple[Options, DisplayOptions]:
+    _, options, display_options = mypy.main.process_options(
         ["-i"] + flags, require_targets=False, server_options=True
     )
     if options.report_dirs:
@@ -150,7 +161,7 @@ def process_start_options(flags: list[str], allow_sources: bool) -> Options:
         sys.exit("dmypy: start/restart should not disable incremental mode")
     if options.follow_imports not in ("skip", "error", "normal"):
         sys.exit("dmypy: follow-imports=silent not supported")
-    return options
+    return options, display_options
 
 
 def ignore_suppressed_imports(module: str) -> bool:
@@ -325,7 +336,7 @@ class Server:
             # capture stderr so the client can report it
             with redirect_stderr(stderr):
                 with redirect_stdout(stdout):
-                    sources, options = mypy.main.process_options(
+                    sources, options, display_options = mypy.main.process_options(
                         ["-i"] + list(args),
                         require_targets=True,
                         server_options=True,
@@ -350,7 +361,7 @@ class Server:
             return {"out": "", "err": str(err), "status": 2}
         except SystemExit as e:
             return {"out": stdout.getvalue(), "err": stderr.getvalue(), "status": e.code}
-        return self.check(sources, export_types, is_tty, terminal_width)
+        return self.check(sources, export_types=export_types, is_tty=is_tty, terminal_width=terminal_width, display_options=display_options)
 
     def cmd_check(
         self, files: Sequence[str], export_types: bool, is_tty: bool, terminal_width: int
@@ -360,6 +371,7 @@ class Server:
             sources = create_source_list(files, self.options, self.fscache)
         except InvalidSourceList as err:
             return {"out": "", "err": str(err), "status": 2}
+        raise Exception("TODO: also have to update args here")  # noqa
         return self.check(sources, export_types, is_tty, terminal_width)
 
     def cmd_recheck(
@@ -414,7 +426,13 @@ class Server:
         return res
 
     def check(
-        self, sources: list[BuildSource], export_types: bool, is_tty: bool, terminal_width: int
+        self,
+        sources: list[BuildSource],
+        *,
+        display_options: DisplayOptions,
+        export_types: bool,
+        is_tty: bool,
+        terminal_width: int,
     ) -> dict[str, Any]:
         """Check using fine-grained incremental mode.
 
@@ -424,7 +442,8 @@ class Server:
         old_export_types = self.options.export_types
         self.options.export_types = self.options.export_types or export_types
         if not self.fine_grained_manager:
-            res = self.initialize_fine_grained(sources, is_tty, terminal_width)
+            # XXX: this looks like we're passing display_options and terminal_width in the wrong place!
+            res = self.initialize_fine_grained(sources, is_tty=is_tty, terminal_width=terminal_width, display_options=display_options)
         else:
             if not self.following_imports():
                 messages = self.fine_grained_increment(sources, explicit_export_types=export_types)

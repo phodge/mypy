@@ -24,7 +24,7 @@ from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
-from mypy.options import COMPLETE_FEATURES, INCOMPLETE_FEATURES, BuildType, Options
+from mypy.options import COMPLETE_FEATURES, INCOMPLETE_FEATURES, BuildType, DisplayOptions, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
 
@@ -69,7 +69,7 @@ def main(
         args = sys.argv[1:]
 
     fscache = FileSystemCache()
-    sources, options = process_options(args, stdout=stdout, stderr=stderr, fscache=fscache)
+    sources, options, display_options = process_options(args, stdout=stdout, stderr=stderr, fscache=fscache)
     if clean_exit:
         options.fast_exit = False
 
@@ -447,7 +447,7 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
-) -> tuple[list[BuildSource], Options]:
+) -> tuple[list[BuildSource], Options, DisplayOptions]:
     """Parse command line arguments.
 
     If a FileSystemCache is passed in, and package_root options are given,
@@ -1412,6 +1412,12 @@ def process_options(
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
 
+    # make display options now
+    display_options = DisplayOptions(
+        want_column_numbers=options.show_column_numbers,
+        want_error_codes=not options.hide_error_codes,
+    )
+
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
@@ -1431,11 +1437,11 @@ def process_options(
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
-        return targets, options
+        return targets, options, display_options
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
         targets = [BuildSource(None, None, "\n".join(special_opts.command))]
-        return targets, options
+        return targets, options, display_options
     else:
         try:
             targets = create_source_list(special_opts.files, options, fscache)
@@ -1444,7 +1450,7 @@ def process_options(
         # exceptions of different types.
         except InvalidSourceList as e2:
             fail(str(e2), stderr, options)
-        return targets, options
+        return targets, options, display_options
 
 
 def process_package_roots(

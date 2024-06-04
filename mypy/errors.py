@@ -11,7 +11,7 @@ from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter
 from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode, mypy_error_codes
 from mypy.message_registry import ErrorMessage
-from mypy.options import Options
+from mypy.options import DisplayOptions, Options
 from mypy.scope import Scope
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 from mypy.version import __version__ as mypy_version
@@ -558,11 +558,18 @@ class Errors:
             self._add_error_info(file, note)
         if (
             self.options.show_error_code_links
+            # XXX: this should be using display_options.want_error_codes also,
+            # but this doesn't seem to be a place in the call stack where
+            # display_options should be accessed
             and not self.options.hide_error_codes
             and info.code is not None
             and info.code not in HIDE_LINK_CODES
             and info.code.code in mypy_error_codes
         ):
+            # TODO: instead of checking the value of
+            # display_options.want_error_codes here, can we flag the ErrorInfo
+            # instance as being error-code related and only display it when the
+            # render option is set?
             message = f"See {BASE_RTD_URL}-{info.code.code} for more info"
             if message in self.only_once_messages:
                 return
